@@ -31,7 +31,7 @@ open class ScriptLoader(
     suspend fun compileScript(file: File): CompiledScript {
         val source = file.toScriptSource()
         val compile = host.compile(source).valueOr {
-            throw ScriptCompilationError()
+            throw ScriptCompilationError(mapScriptErrorDiagnostics(it.reports))
         }
         return CompiledScript(file, source as FileScriptSource, compile)
     }
@@ -46,7 +46,7 @@ open class ScriptLoader(
     @Throws(ScriptEvaluationError::class)
     suspend fun evalScript(script: CompiledScript) = script.apply {
         evaluation = host.eval(script.script).valueOr {
-            throw ScriptEvaluationError()
+            throw ScriptEvaluationError(mapScriptErrorDiagnostics(it.reports))
         }
     }
 
