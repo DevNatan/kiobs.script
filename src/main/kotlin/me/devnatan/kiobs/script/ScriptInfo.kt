@@ -1,13 +1,15 @@
 package me.devnatan.kiobs.script
 
-open class ScriptInfo : java.io.Serializable {
+open class ScriptInfo(
+    val name: String
+) : java.io.Serializable {
 
-    class Empty : ScriptInfo()
+    object Empty : ScriptInfo("<empty>") {
+        override fun isValid(): Boolean = false
+    }
 
-    lateinit var name: String
-
-    fun isValid(): Boolean {
-        return ::name.isInitialized
+    open fun isValid(): Boolean {
+        return true
     }
 
     override fun toString(): String {
