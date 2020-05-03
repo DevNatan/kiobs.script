@@ -1,50 +1,47 @@
+@file:JvmMultifileClass
+@file:JvmName("JvmScriptLoader")
 package me.devnatan.kiobs.script
 
 import me.devnatan.kiobs.script.host.ScriptHost
 import java.io.File
+import kotlin.script.experimental.api.ScriptCompilationConfiguration
+import kotlin.script.experimental.api.SourceCode
 import kotlin.script.experimental.api.valueOr
 import kotlin.script.experimental.host.FileScriptSource
+import kotlin.script.experimental.host.StringScriptSource
 import kotlin.script.experimental.host.toScriptSource
 
-open class ScriptLoader(
-    val scriptsFolder: File,
-    val host: ScriptHost
-) {
-
-    val scripts: MutableList<LoadedScript> = arrayListOf()
-
-    suspend fun loadScripts() {
-        if (!scriptsFolder.exists())
-            scriptsFolder.mkdirs()
-
-        for(script in scriptsFolder.listFiles { file ->
-            file.isFile && file.extension == Script.FILE_EXTENSION
-        }) loadScript(script)
-    }
+open class ScriptLoader(val host: ScriptHost) {
 
     @Throws(ScriptException::class)
-    suspend fun loadScript(file: File): Boolean {
-        return scripts.add(LoadedScript(compileScript(file)).apply { evalScript(this) })
+    open suspend fun loadScript(file: File) = evalScript(compileScript(file))
+
+    @Throws(ScriptException::class)
+    open suspend fun loadScript(text: String) = evalScript(compileScript(text))
+
+    @Throws(ScriptCompilationError::class)
+    open suspend fun compileScript(source: SourceCode): KotlinCompiledScript {
+        return host.compile(source).valueOr {
+            throw ScriptCompilationError(mapScriptErrorDiagnostics(it.reports))
+        }
     }
 
     @Throws(ScriptCompilationError::class)
-    suspend fun compileScript(file: File): CompiledScript {
-        val source = file.toScriptSource()
-        val compile = host.compile(source).valueOr {
-            throw ScriptCompilationError(mapScriptErrorDiagnostics(it.reports))
-        }
-        return CompiledScript(file, source as FileScriptSource, compile)
+    open suspend fun compileScript(file: File): CompiledScript {
+        val source = file.toScriptSource() as FileScriptSource
+        val compile = compileScript(source)
+        return FileBasedCompiledScript(file, source, compile, compile.compilationConfiguration[ScriptCompilationConfiguration.scriptInfo]!!)
+    }
+
+    @Throws(ScriptCompilationError::class)
+    open suspend fun compileScript(text: String): CompiledScript {
+        val source = text.toScriptSource() as StringScriptSource
+        val compile = compileScript(source)
+        return StringBasedCompiledScript(text, source, compile, compile.compilationConfiguration[ScriptCompilationConfiguration.scriptInfo]!!)
     }
 
     @Throws(ScriptEvaluationError::class)
-    suspend fun evalScript(file: File): CompiledScript {
-        return scripts.find { it.file == file }?.also {
-            evalScript(it)
-        } ?: throw NotCompiledScriptException()
-    }
-
-    @Throws(ScriptEvaluationError::class)
-    suspend fun evalScript(script: CompiledScript) = script.apply {
+    open suspend fun evalScript(script: CompiledScript) = script.apply {
         evaluation = host.eval(script.script).valueOr {
             throw ScriptEvaluationError(mapScriptErrorDiagnostics(it.reports))
         }
