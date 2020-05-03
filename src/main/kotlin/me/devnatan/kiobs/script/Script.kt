@@ -1,32 +1,46 @@
+@file:JvmMultifileClass
+@file:JvmName("ScriptKeys")
 package me.devnatan.kiobs.script
 
-import me.devnatan.kiobs.script.compiler.ScriptCompilerConfiguration
-import me.devnatan.kiobs.script.evaluator.ScriptEvaluatorConfiguration
+import me.devnatan.kiobs.script.compiler.DefaultScriptCompilationConfiguration
+import me.devnatan.kiobs.script.evaluator.DefaultScriptEvaluationConfiguration
 import java.io.File
 import kotlin.script.experimental.annotations.KotlinScript
 import kotlin.script.experimental.api.EvaluationResult
 import kotlin.script.experimental.api.ScriptCompilationConfigurationKeys
+import kotlin.script.experimental.api.SourceCode
 import kotlin.script.experimental.host.FileScriptSource
+import kotlin.script.experimental.host.StringScriptSource
 import kotlin.script.experimental.util.PropertiesCollection
+import me.devnatan.kiobs.script.annotations.Script as ScriptAnnotation
 
-typealias KotlinCompiledScript = kotlin.script.experimental.api.CompiledScript<Script>
+/**
+ * The current instance of the script,
+ * which can be accessed directly within the script.
+ */
+interface Script {
 
-@KotlinScript(
-    displayName = "Kiobs Script",
-    fileExtension = Script.FILE_EXTENSION,
-    compilationConfiguration = ScriptCompilerConfiguration::class,
-    evaluationConfiguration = ScriptEvaluatorConfiguration::class
+    /**
+     * The information contained in the initial annotation [ScriptAnnotation] script.
+     * This information is not changeable and is defined during the compilation stage.
+     */
+    val info: ScriptInfo
+
+}
+
+@KotlinScript("Kiobs Script",
+    compilationConfiguration = DefaultScriptCompilationConfiguration::class,
+    evaluationConfiguration = DefaultScriptEvaluationConfiguration::class
 )
-abstract class Script {
+abstract class KiobsScript(override val info: ScriptInfo) : Script {
 
-    companion object {
-        /**
-         * The extension of the scripts, all scripts must have this extension and it is not changeable.
-         */
-        const val FILE_EXTENSION = "kts"
+    override fun toString(): String {
+        return "Script (info=$info)"
     }
 
 }
+
+typealias KotlinCompiledScript = kotlin.script.experimental.api.CompiledScript<KiobsScript>
 
 /**
  * Represents a script already compiled containing the result of the compilation.
@@ -35,25 +49,67 @@ abstract class Script {
  * it will result in [UninitializedPropertyAccessException] by Kotlin, because the result of the evaluation is a `lateinit` property.
  * You can check for an evaluation result first using the [isEvaluated] method.
  */
-open class CompiledScript(
-    val file: File,
-    val source: FileScriptSource,
+interface CompiledScript : Script {
+
+    /**
+     * The source code of the script.
+     * @see FileBasedCompiledScript
+     * @see StringBasedCompiledScript
+     */
+    val source: SourceCode
+
+    /**
+     * The final result of the compilation given by the compiler.
+     */
     val script: KotlinCompiledScript
-) : Script() {
 
-    lateinit var evaluation: EvaluationResult
+    /**
+     * The final result of the evaluation given by the evaluator.
+     */
+    var evaluation: EvaluationResult
 
-    fun isEvaluated(): Boolean {
+    /**
+     * If the script has already been evaluated,
+     * it may have been compiled but not evaluated, this may occur.
+     */
+    fun isEvaluated(): Boolean
+
+}
+
+open class BaseCompiledScript(
+    override val source: SourceCode,
+    override val script: KotlinCompiledScript,
+    override val info: ScriptInfo
+) : CompiledScript {
+
+    final override lateinit var evaluation: EvaluationResult
+
+    final override fun isEvaluated(): Boolean {
         return ::evaluation.isInitialized
     }
+
 }
 
 /**
- * It represents a compiled script in use, an enabled script.
- * @see CompiledScript
+ * Represents a script compiled using a file.
+ * @property file the script file
  */
-open class LoadedScript(
-    delegate: CompiledScript
-) : CompiledScript(delegate.file, delegate.source, delegate.script)
+open class FileBasedCompiledScript(
+    val file: File,
+    source: FileScriptSource,
+    script: KotlinCompiledScript,
+    info: ScriptInfo
+) : BaseCompiledScript(source, script, info)
 
-val ScriptCompilationConfigurationKeys.scriptInfo by PropertiesCollection.key<ScriptInfo>(ScriptInfo.Empty())
+/**
+ * Represents a script compiled using text directly.
+ * @property text the script itself
+ */
+open class StringBasedCompiledScript(
+    val text: String,
+    source: StringScriptSource,
+    script: KotlinCompiledScript,
+    info: ScriptInfo
+) : BaseCompiledScript(source, script, info)
+
+val ScriptCompilationConfigurationKeys.scriptInfo by PropertiesCollection.key<ScriptInfo>(ScriptInfo.Empty)
