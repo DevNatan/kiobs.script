@@ -20,7 +20,7 @@ open class ScriptLoader(val host: ScriptHost) {
     open suspend fun loadScript(text: String) = evalScript(compileScript(text))
 
     @Throws(ScriptCompilationError::class)
-    open suspend fun compileScript(source: SourceCode): KotlinCompiledScript {
+    protected suspend fun compileScript(source: SourceCode): KotlinCompiledScript {
         return host.compile(source).valueOr {
             throw ScriptCompilationError(mapScriptErrorDiagnostics(it.reports))
         }
