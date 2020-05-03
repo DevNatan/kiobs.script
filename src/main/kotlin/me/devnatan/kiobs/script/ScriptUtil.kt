@@ -4,6 +4,8 @@ package me.devnatan.kiobs.script
 
 import org.jetbrains.kotlin.daemon.common.toHexString
 import java.io.File
+import java.net.URISyntaxException
+import java.net.URL
 import java.net.URLClassLoader
 import java.security.MessageDigest
 import kotlin.script.experimental.api.ScriptCompilationConfiguration
@@ -21,9 +23,16 @@ fun createScriptName(script: SourceCode, configuration: ScriptCompilationConfigu
 }
 
 fun resolveScriptClasspath(classLoader: ClassLoader): List<File> {
-    return (classLoader as URLClassLoader).urLs.mapNotNull { url ->
-        runCatching { File(url.toURI().schemeSpecificPart) }.getOrNull()
+    fun URL.toFileOrNull() = try {
+        File(toURI().schemeSpecificPart)
+    } catch (e: URISyntaxException) {
+        if (protocol != "file") null
+        else File(file)
     }
+
+    return (classLoader as? URLClassLoader)?.urLs?.mapNotNull { url ->
+        url.toFileOrNull()
+    } ?: emptyList()
 }
 
 fun mapScriptErrorDiagnostics(diagnostics: List<ScriptDiagnostic>) = diagnostics.filter {
