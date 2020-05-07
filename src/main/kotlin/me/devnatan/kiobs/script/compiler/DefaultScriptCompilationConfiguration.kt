@@ -6,15 +6,15 @@ import me.devnatan.kiobs.script.scriptInfo
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.jvm.dependenciesFromClassContext
 import kotlin.script.experimental.jvm.jvm
-import me.devnatan.kiobs.script.annotations.Script as ScriptAnnotation
+import me.devnatan.kiobs.script.annotations.Script
 
 object DefaultScriptCompilationConfiguration : ScriptCompilationConfiguration({
-    defaultImports(KiobsScript::class, ScriptAnnotation::class)
+    defaultImports(Script::class, KiobsScript::class)
     jvm {
         dependenciesFromClassContext(DefaultScriptCompilationConfiguration::class, wholeClasspath = true)
     }
     refineConfiguration {
-        onAnnotations(ScriptAnnotation::class, handler = ::resolveScriptInfo)
+        onAnnotations(Script::class, handler = ::resolveScriptInfo)
     }
     ide {
         acceptedLocations(ScriptAcceptedLocation.Everywhere)
@@ -24,7 +24,7 @@ object DefaultScriptCompilationConfiguration : ScriptCompilationConfiguration({
         beforeCompiling { ctx ->
             // all scripts must contain this annotation that will be used to identify it.
             // you can override this configuration from the compiler and remove this option but it is not recommended.
-            val content = ctx.compilationConfiguration.get(ScriptCompilationConfiguration.scriptInfo)
+            val content = ctx.compilationConfiguration[ScriptCompilationConfiguration.scriptInfo]
             if ((content == null) || !content.isValid()) {
                 return@beforeCompiling ResultWithDiagnostics.Failure(
                     ScriptDiagnostic(
