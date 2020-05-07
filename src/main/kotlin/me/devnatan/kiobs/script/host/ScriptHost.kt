@@ -1,5 +1,6 @@
 @file:JvmMultifileClass
 @file:JvmName("ScriptHosts")
+
 package me.devnatan.kiobs.script.host
 
 import me.devnatan.kiobs.script.CompiledScript
@@ -73,11 +74,14 @@ open class JvmScriptHost(
 ) : ScriptHost {
 
     init {
-        withUpdatedConfiguration {
+        withCompilationConfiguration {
             hostConfiguration(ScriptingHostConfiguration {
                 jvm {
                     compilationCache(CompiledScriptJarsCache { script, configuration ->
-                        File(scriptsCacheDir.apply { if (!exists()) mkdir() }, createScriptName(script, configuration) + ".jar")
+                        File(
+                            scriptsCacheDir.apply { if (!exists()) mkdir() },
+                            createScriptName(script, configuration) + ".jar"
+                        )
                     })
                 }
             })
@@ -85,11 +89,17 @@ open class JvmScriptHost(
     }
 
     override suspend fun compile(script: SourceCode): ResultWithDiagnostics<KotlinCompiledScript> {
-        return compiler(script, ScriptCompilationConfiguration(createJvmCompilationConfigurationFromTemplate<KiobsScript>())) as ResultWithDiagnostics<KotlinCompiledScript>
+        return compiler(
+            script,
+            ScriptCompilationConfiguration(createJvmCompilationConfigurationFromTemplate<KiobsScript>())
+        ) as ResultWithDiagnostics<KotlinCompiledScript>
     }
 
     override suspend fun eval(script: KotlinCompiledScript): ResultWithDiagnostics<EvaluationResult> {
-        return evaluator(script, ScriptEvaluationConfiguration(createJvmEvaluationConfigurationFromTemplate<KiobsScript>()))
+        return evaluator(
+            script,
+            ScriptEvaluationConfiguration(createJvmEvaluationConfigurationFromTemplate<KiobsScript>())
+        )
     }
 
 }
@@ -108,10 +118,19 @@ fun createJvmScriptHost(cache: File): ScriptHost = JvmScriptHost(
 )
 
 /**
- * Apply new settings to settings already defined for the current host.
- * The new settings will be merged with the existing ones, some of which can be overwritten.
- * @param configuration the new configuration
+ * Apply a new compilation configuration to the already defined for the current host.
+ * The new configuration will be merged with the existing ones, some of which can be overwritten.
+ * @param configuration the new compilation configuration
  */
-fun ScriptHost.withUpdatedConfiguration(
+fun ScriptHost.withCompilationConfiguration(
     configuration: ScriptCompilationConfiguration.Builder.() -> Unit
 ) = apply { compilerConfiguration = compilerConfiguration.with(configuration) }
+
+/**
+ * Apply a new evaluation configuration to the already defined for the current host.
+ * The new configuration will be merged with the existing ones, some of which can be overwritten.
+ * @param configuration the new evaluation configuration
+ */
+fun ScriptHost.withEvaluationConfiguration(
+    configuration: ScriptEvaluationConfiguration.Builder.() -> Unit
+) = apply { evaluatorConfiguration = evaluatorConfiguration.with(configuration) }

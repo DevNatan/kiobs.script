@@ -10,12 +10,10 @@ To start loading your scripts it is very simple just follow the summary step by 
 * [Loading scripts](#loading-scripts)
 * [Compilation](#compilation)
 * [Evaluation](#evaluation)
-* Composing a script
-  * Annotations
-  * Default imports
-  * Classloader injection
-  * Dependencies
-  * Instance and internal attributes
+* [Composing a script](#composing-a-script)
+  * [Annotations](#annotations)
+  * [ClassLoader injection](#classloader-injection)
+  * [Instance and internal attributes](#instance-and-internal-attributes)
 * [Errors](#errors)
 * [Contributing](#contributing)
 * [License](#license)
@@ -65,11 +63,11 @@ If you are thinking of **adding default imports** or **providing a classpath** f
 <br><br>
 Let's go back to our ScriptHost and modify it.
 ```kotlin
-import me.devnatan.kiobs.script.host.withUpdatedConfiguration
+import me.devnatan.kiobs.script.host.withCompilationConfiguration
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvm.dependenciesFromClassLoader
 
-withUpdatedConfiguration {
+scriptsHost.withCompilationConfiguration {
     jvm {
         dependenciesFromClassLoader(myClassLoader)
     }
@@ -97,6 +95,84 @@ try {
     e.diagnostics.forEach { report ->
         report.exception?.printStackTrace() ?: println(report.toString())
     }
+}
+```
+
+## Composing a script
+All files considered to be scripts must have the `.kts` (Kotlin Script) extension.
+
+### Annotations
+Consider that you in your project will load a script but you need some information about it such as: your version or author.\
+Somehow we would have to get them and for that we have the standard annotation [`file:@Script`](https://github.com/DevNatan/kiobs.script/blob/develop/src/main/kotlin/me/devnatan/kiobs/script/annotations/ScriptAnnotations.kt).
+
+Currently containing only one parameter `name` is the minimum we need to identify a script.
+
+###### Attention:
+The Script annotation is mandatory, therefore, all loaded scripts must count it in its header. 
+Otherwise, a compilation error will occur for that script.
+
+### ClassLoader injection
+Since our project was designed for scripts to be handled externally, dependency injection is quite common.
+So, natively we support this option to inject a dependency is extremely simple.
+
+Say you have your class `Planet` and you try to access it within a script
+###### Planet
+```kotlin
+package universe
+
+class Planet {
+    
+    fun getName(): String {
+        return "Earth"
+    }
+
+}
+```
+
+###### Script
+```kotlin
+@file:Script("My script")
+
+import universe.Planet
+
+val earth = Planet()
+println(earth.getName())
+```
+
+**What you expect**: `Earth` to be displayed on the console.
+
+But, this will not happen since: the script does not know that the `Planet` class exists, it is not part of its ClassLoader.
+So, we simply inject `Planet` into the script compilation configuration.
+```kotlin
+import me.devnatan.kiobs.script.host.withCompilationConfiguration
+import me.devnatan.kiobs.script.mapIsFile
+
+
+scriptsHost.withCompilationConfiguration {
+    jvm {
+        updateClasspath(Planet::class.java.classLoader.mapIsFile())
+    }
+}
+```
+
+Now, if we compile and evaluate our script again we will have the result:
+> "Earth"
+
+## Instance and internal attributes
+You may have asked yourself: can I access what's inside my script outside of it?\
+And the answer to that is: **yes, you can!**
+
+Scripts, when evaluated, reproduce the code within it, so during this stage we will have its instance and internal attributes available.
+It is also possible for scripts to share their own information with each other as if they were a bridge and each script was a city, one interconnected to the other.
+
+But, due to conflicts between scripts, this option is disabled by default.\
+You can enable them using the evaluation configuration update method.
+```kotlin
+import me.devnatan.kiobs.script.host.withEvaluationConfiguration
+import kotlin.script.experimental.api.enableScriptsInstancesSharing
+
+scriptsHost.withEvaluationConfiguration {
+    enableScriptsInstancesSharing()
 }
 ```
 
