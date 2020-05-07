@@ -18,7 +18,7 @@ import me.devnatan.kiobs.script.annotations.Script as ScriptAnnotation
  * The current instance of the script,
  * which can be accessed directly within the script.
  */
-interface Script {
+interface UnderlyningScript {
 
     /**
      * The information contained in the initial annotation [ScriptAnnotation] script.
@@ -32,7 +32,7 @@ interface Script {
     compilationConfiguration = DefaultScriptCompilationConfiguration::class,
     evaluationConfiguration = DefaultScriptEvaluationConfiguration::class
 )
-abstract class KiobsScript(override val info: ScriptInfo) : Script {
+abstract class KiobsScript(override val info: ScriptInfo) : UnderlyningScript {
 
     override fun toString(): String {
         return "Script (info=$info)"
@@ -49,7 +49,7 @@ typealias KotlinCompiledScript = kotlin.script.experimental.api.CompiledScript<K
  * it will result in [UninitializedPropertyAccessException] by Kotlin, because the result of the evaluation is a `lateinit` property.
  * You can check for an evaluation result first using the [isEvaluated] method.
  */
-interface CompiledScript : Script {
+interface CompiledScript : UnderlyningScript {
 
     /**
      * The source code of the script.

@@ -1,5 +1,8 @@
 package me.devnatan.kiobs.script
 
+/**
+ * @property name the script name
+ */
 open class ScriptInfo(
     val name: String
 ) : java.io.Serializable {
@@ -8,6 +11,9 @@ open class ScriptInfo(
         override fun isValid(): Boolean = false
     }
 
+    /**
+     * Whether the information contained in this script is valid.
+     */
     open fun isValid(): Boolean {
         return true
     }

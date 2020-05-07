@@ -5,24 +5,42 @@ package me.devnatan.kiobs.script.host
 import me.devnatan.kiobs.script.CompiledScript
 import me.devnatan.kiobs.script.KiobsScript
 import me.devnatan.kiobs.script.KotlinCompiledScript
+import me.devnatan.kiobs.script.compiler.DefaultScriptCompilationConfiguration
 import me.devnatan.kiobs.script.createScriptName
+import me.devnatan.kiobs.script.evaluator.DefaultScriptEvaluationConfiguration
 import java.io.File
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
+import kotlin.script.experimental.jvm.BasicJvmScriptEvaluator
 import kotlin.script.experimental.jvm.compilationCache
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
+import kotlin.script.experimental.jvmhost.JvmScriptCompiler
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
 import kotlin.script.experimental.jvmhost.createJvmEvaluationConfigurationFromTemplate
 
 interface ScriptHost {
 
+    /**
+     * The script compiler that will be used.
+     */
     val compiler: ScriptCompiler
 
-    var compilerConfiguration: ScriptCompilationConfiguration
-
+    /**
+     * The script evaluator that will be used.
+     */
     val evaluator: ScriptEvaluator
 
+    /**
+     * Settings that will be used when compiling.
+     * @see compiler
+     */
+    var compilerConfiguration: ScriptCompilationConfiguration
+
+    /**
+     * The settings that will be used when evaluating.
+     * @see evaluator
+     */
     var evaluatorConfiguration: ScriptEvaluationConfiguration
 
     /**
@@ -76,6 +94,24 @@ open class JvmScriptHost(
 
 }
 
+/**
+ * Creates a [ScriptHost] for the JVM with the default compilation and evaluation settings.
+ * @param cache script cache directory
+ * @return [JvmScriptHost]
+ */
+fun createJvmScriptHost(cache: File): ScriptHost = JvmScriptHost(
+    cache,
+    JvmScriptCompiler(),
+    BasicJvmScriptEvaluator(),
+    DefaultScriptCompilationConfiguration,
+    DefaultScriptEvaluationConfiguration
+)
+
+/**
+ * Apply new settings to settings already defined for the current host.
+ * The new settings will be merged with the existing ones, some of which can be overwritten.
+ * @param configuration the new configuration
+ */
 fun ScriptHost.withUpdatedConfiguration(
     configuration: ScriptCompilationConfiguration.Builder.() -> Unit
 ) = apply { compilerConfiguration = compilerConfiguration.with(configuration) }
